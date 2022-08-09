@@ -3,21 +3,28 @@
 static int depth;
 
 static void push(void) {
-  printf("  st.d $a0, $sp, -%d\n", depth * 8);
+  printf("  addi.d $sp, $sp, -8\n");
+  printf("  st.d $a0, $sp, 0\n");
   depth++;
 }
 
 static void pop(char *arg) {
+  printf("  ld.d $%s, $sp, 0\n", arg);
+  printf("  addi.d $sp, $sp, 8\n");
   depth--;
-  printf("  ld.d $%s, $sp, -%d\n", arg, depth * 8);
+}
+
+// Round up `n` to the nearest multiple of `align`. For instance,
+// align_to(5, 8) returns 8 and align_to(11, 8) returns 16.
+static int align_to(int n, int align) {
+  return (n + align - 1) / align * align;
 }
 
 // Compute the absolute address of a given node.
 // It's an error if a given node does not reside in memory.
 static void gen_addr(Node *node) {
   if (node->kind == ND_VAR) {
-    int offset = (node->name - 'a' + 1) * 8;
-    printf("  addi.d $a0, $fp,%d\n", -offset);
+    printf("  addi.d $a0, $fp, %d\n", node->var->offset);
     return;
   }
 
@@ -99,27 +106,39 @@ static void gen_stmt(Node *node) {
   error("invalid statement");
 }
 
-void codegen(Node *node) {
+// Assign offsets to local variables.
+static void assign_lvar_offsets(Function *prog) {
+  int offset = 0;
+  for (Obj *var = prog->locals; var; var = var->next) {
+    var->offset = -offset;
+    offset += 8;
+  }
+  prog->stack_size = align_to(offset, 16);
+}
+
+void codegen(Function *prog) {
+  assign_lvar_offsets(prog);
+
   printf("  .globl main\n");
   printf("main:\n");
 
   // Prologue
-  printf("  addi.d $sp, $sp, -224\n");
-  printf("  st.d $fp, $sp, 216\n");
-  printf("  st.d $ra, $sp, 208\n");
+  printf("  addi.d $sp, $sp,-%d\n", prog->stack_size + 16);
+  printf("  st.d $fp, $sp, %d\n", prog->stack_size + 8);
+  printf("  st.d $ra, $sp, %d\n", prog->stack_size);
   printf("  add.d $fp, $r0, $sp\n");
 
-  printf("  addi.d $sp, $sp, -208\n");
+  printf("  addi.d $sp, $sp, -%d\n", prog->stack_size);
 
-  for (Node *n = node; n; n = n->next) {
+  for (Node *n = prog->body; n; n = n->next) {
     gen_stmt(n);
     assert(depth == 0);
   }
 
   printf("  add.d $sp, $r0, $fp\n");
-  printf("  ld.d $fp, $sp, 216\n");
-  printf("  ld.d $ra, $sp, 208\n");
-  printf("  addi.d $sp, $sp, 224\n");
+  printf("  ld.d $fp, $sp, %d\n", prog->stack_size + 8);
+  printf("  ld.d $ra, $sp, %d\n", prog->stack_size);
+  printf("  addi.d $sp, $sp, %d\n", prog->stack_size + 16);
   printf("  jr $ra\n");
 
   printf(".LFE0:\n");
