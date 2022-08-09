@@ -34,7 +34,7 @@ static int align_to(int n, int align) {
 static void gen_addr(Node *node) {
   switch (node->kind) {
   case ND_VAR:
-    printf("  addi.d $a0, $fp, %d\n", node->var->offset);
+    printf("  addi.d $a0, $fp, %d\n", node->var->offset - 8);
     return;
   case ND_DEREF:
     gen_expr(node->lhs);
@@ -197,12 +197,17 @@ void codegen(Function *prog) {
     current_fn = fn;
 
     // Prologue
-    printf("  addi.d $sp, $sp,-%d\n", prog->stack_size + 16);
-    printf("  st.d $ra, $sp, %d\n", prog->stack_size + 8);
-    printf("  st.d $fp, $sp, %d\n", prog->stack_size);
+    printf("  addi.d $sp, $sp,-%d\n", fn->stack_size + 16);
+    printf("  st.d $ra, $sp, %d\n", fn->stack_size + 8);
+    printf("  st.d $fp, $sp, %d\n", fn->stack_size);
     printf("  add.d $fp, $r0, $sp\n");
 
-    printf("  addi.d $sp, $sp, -%d\n", prog->stack_size);
+    printf("  addi.d $sp, $sp, -%d\n", fn->stack_size);
+
+    // Save passed-by-register arguments to the stack
+    int i = 0;
+    for (Obj *var = fn->params; var; var = var->next)
+      printf("  st.d $%s, $fp, %d\n", argreg[i++], var->offset - 8);
 
     // Emit code
     gen_stmt(fn->body);
@@ -211,9 +216,9 @@ void codegen(Function *prog) {
     // Epilogue
     printf(".L.return.%s:\n", fn->name);
     printf("  add.d $sp, $r0, $fp\n");
-    printf("  ld.d $ra, $sp, %d\n", prog->stack_size + 8);
-    printf("  ld.d $fp, $sp, %d\n", prog->stack_size);
-    printf("  addi.d $sp, $sp, %d\n", prog->stack_size + 16);
+    printf("  ld.d $ra, $sp, %d\n", fn->stack_size + 8);
+    printf("  ld.d $fp, $sp, %d\n", fn->stack_size);
+    printf("  addi.d $sp, $sp, %d\n", fn->stack_size + 16);
     printf("  jr $ra\n");
   }
 
