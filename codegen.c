@@ -34,7 +34,14 @@ static int align_to(int n, int align) {
 static void gen_addr(Node *node) {
   switch (node->kind) {
   case ND_VAR:
-    printf("  addi.d $a0, $fp, %d\n", node->var->offset - node->var->ty->size);
+    if (node->var->is_local) {
+      // Local variable
+      printf("  addi.d $a0, $fp, %d\n", node->var->offset - node->var->ty->size);
+    } else {
+      // Global variable
+      printf("  la.local $a0, %s\n", node->var->name);
+    }
+
     return;
   case ND_DEREF:
     gen_expr(node->lhs);
@@ -211,9 +218,19 @@ static void assign_lvar_offsets(Obj *prog) {
   }
 }
 
-void codegen(Obj *prog) {
-  assign_lvar_offsets(prog);
+static void emit_data(Obj *prog) {
+  for (Obj *var = prog; var; var = var->next) {
+    if (var->is_function)
+      continue;
 
+    printf("  .data\n");
+    printf("  .globl %s\n", var->name);
+    printf("%s:\n", var->name);
+    printf("  .zero %d\n", var->ty->size);
+  }
+}
+
+static void emit_text(Obj *prog) {
   for (Obj *fn = prog; fn; fn = fn->next) {
     if (!fn->is_function)
       continue;
@@ -248,6 +265,12 @@ void codegen(Obj *prog) {
     printf("  addi.d $sp, $sp, %d\n", fn->stack_size + 16);
     printf("  jr $ra\n");
   }
+}
+
+void codegen(Obj *prog) {
+  assign_lvar_offsets(prog);
+  emit_data(prog);
+  emit_text(prog);
 
   printf(".LFE0:\n");
   printf("  .size   main, .-main\n");
