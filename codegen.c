@@ -83,6 +83,8 @@ static void load(Type *ty) {
 
   if (ty->size == 1)
      println("  ld.b $a0, $a0, 0");
+  else if (ty->size == 4)
+    println("  ld.w $a0, $a0, 0");
   else
      println("  ld.d $a0, $a0, 0");
 }
@@ -101,6 +103,8 @@ static void store(Type *ty) {
 
   if (ty->size == 1)
      println("  st.b $a0, $a1, 0");
+  else if (ty->size == 4)
+    println("  st.w $a0, $a1, 0");
   else
      println("  st.d $a0, $a1, 0");
 }
@@ -282,6 +286,21 @@ static void emit_data(Obj *prog) {
   }
 }
 
+static void store_gp(int r, int offset, int sz) {
+  switch (sz) {
+  case 1:
+    println("  st.b $%s, $fp, %d", argreg[r], offset - sz);
+    return;
+  case 4:
+    println("  st.w $%s, $fp, %d", argreg[r], offset - sz);
+    return;
+  case 8:
+    println("  st.d $%s, $fp, %d", argreg[r], offset - sz);
+    return;
+  }
+  unreachable();
+}
+
 static void emit_text(Obj *prog) {
   for (Obj *fn = prog; fn; fn = fn->next) {
     if (!fn->is_function)
@@ -302,12 +321,8 @@ static void emit_text(Obj *prog) {
 
     // Save passed-by-register arguments to the stack
     int i = 0;
-    for (Obj *var = fn->params; var; var = var->next) {
-      if (var->ty->size == 1)
-         println("  st.b $%s, $fp, %d", argreg[i++], var->offset - var->ty->size);
-      else
-         println("  st.d $%s, $fp, %d", argreg[i++], var->offset - var->ty->size);
-    }
+    for (Obj *var = fn->params; var; var = var->next)
+      store_gp(i++, var->offset, var->ty->size);
 
     // Emit code
     gen_stmt(fn->body);
