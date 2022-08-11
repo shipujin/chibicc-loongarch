@@ -83,6 +83,8 @@ static void load(Type *ty) {
 
   if (ty->size == 1)
      println("  ld.b $a0, $a0, 0");
+  else if (ty->size == 2)
+     println("  ld.h $a0, $a0, 0");
   else if (ty->size == 4)
     println("  ld.w $a0, $a0, 0");
   else
@@ -103,6 +105,8 @@ static void store(Type *ty) {
 
   if (ty->size == 1)
      println("  st.b $a0, $a1, 0");
+  else if (ty->size == 2)
+     println("  st.h $a0, $a1, 0");
   else if (ty->size == 4)
     println("  st.w $a0, $a1, 0");
   else
@@ -290,6 +294,9 @@ static void store_gp(int r, int offset, int sz) {
   switch (sz) {
   case 1:
     println("  st.b $%s, $fp, %d", argreg[r], offset - sz);
+    return;
+  case 2:
+    println("  st.h $%s, $fp, %d", argreg[r], offset - sz);
     return;
   case 4:
     println("  st.w $%s, $fp, %d", argreg[r], offset - sz);
