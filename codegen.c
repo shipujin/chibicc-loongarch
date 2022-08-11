@@ -71,7 +71,7 @@ static void gen_addr(Node *node) {
 
 // Load a value from where a0 is pointing to.
 static void load(Type *ty) {
-  if (ty->kind == TY_ARRAY) {
+  if (ty->kind == TY_ARRAY || ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
     // If it is an array, do not attempt to load a value to the
     // register because in general we can't load an entire array to a
     // register. As a result, the result of an evaluation of an array
@@ -90,6 +90,14 @@ static void load(Type *ty) {
 // Store a0 to an address that the stack top is pointing to.
 static void store(Type *ty) {
   pop("a1");
+
+  if (ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
+    for (int i = 0; i < ty->size; i++) {
+      println("  ld.b $a4, $a0, %d\n", i);
+      println("  st.b $a4, $a1, %d\n", i);
+    }
+    return;
+  }
 
   if (ty->size == 1)
      println("  st.b $a0, $a1, 0");
