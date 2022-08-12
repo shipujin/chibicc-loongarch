@@ -205,6 +205,11 @@ static void gen_expr(Node *node) {
     gen_expr(node->lhs);
     println("  sltui $a0, $a0, 1");
     return;
+  case ND_BITNOT:
+    gen_expr(node->lhs);
+    println("  li.d $a2, -1");
+    println("  xor $a0, $a0, $a2");
+    return;
   case ND_FUNCALL: {
     int nargs = 0;
     for (Node *arg = node->args; arg; arg = arg->next) {
