@@ -249,6 +249,15 @@ static void gen_expr(Node *node) {
   case ND_MOD:
     println("  mod.%s $a0, $a0, $a1", suffix);
     return;
+  case ND_BITAND:
+    println("  and $a0, $a0, $a1");
+    return;
+  case ND_BITOR:
+    println("  or $a0, $a0, $a1");
+    return;
+  case ND_BITXOR:
+    println("  xor $a0, $a0, $a1");
+    return;
   case ND_EQ:
   case ND_NE:
 
