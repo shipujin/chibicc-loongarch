@@ -201,6 +201,10 @@ static void gen_expr(Node *node) {
     gen_expr(node->lhs);
     cast(node->lhs->ty, node->ty);
     return;
+  case ND_NOT:
+    gen_expr(node->lhs);
+    println("  sltui $a0, $a0, 1");
+    return;
   case ND_FUNCALL: {
     int nargs = 0;
     for (Node *arg = node->args; arg; arg = arg->next) {
