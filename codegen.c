@@ -246,6 +246,9 @@ static void gen_expr(Node *node) {
   case ND_DIV:
     println("  div.%s $a0, $a0, $a1", suffix);
     return;
+  case ND_MOD:
+    println("  mod.%s $a0, $a0, $a1", suffix);
+    return;
   case ND_EQ:
   case ND_NE:
 
