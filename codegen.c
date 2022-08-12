@@ -210,6 +210,32 @@ static void gen_expr(Node *node) {
     println("  li.d $a2, -1");
     println("  xor $a0, $a0, $a2");
     return;
+  case ND_LOGAND: {
+    int c = count();
+    gen_expr(node->lhs);
+    println("  beqz $a0, .L.false.%d", c);
+    gen_expr(node->rhs);
+    println("  beqz $a0, .L.false.%d", c);
+    println("  li.d $a0, 1");
+    println("  b .L.end.%d", c);
+    println(".L.false.%d:", c);
+    println("  li.d $a0, 0");
+    println(".L.end.%d:", c);
+    return;
+  }
+  case ND_LOGOR: {
+    int c = count();
+    gen_expr(node->lhs);
+    println("  bne $a0, $r0, .L.true.%d", c);
+    gen_expr(node->rhs);
+    println("  bne $a0, $r0, .L.true.%d", c);
+    println("  li.d $a0, 0");
+    println("  b .L.end.%d", c);
+    println(".L.true.%d:", c);
+    println("  li.d $a0, 1");
+    println(".L.end.%d:", c);
+    return;
+  }
   case ND_FUNCALL: {
     int nargs = 0;
     for (Node *arg = node->args; arg; arg = arg->next) {
