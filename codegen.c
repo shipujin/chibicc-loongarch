@@ -285,14 +285,12 @@ static void gen_expr(Node *node) {
     println("  xor $a0, $a0, $a1");
     return;
   case ND_EQ:
+    println("  sub.d $a0, $a0, $a1");
+    println("  sltui $a0, $a0, 1");
+    return;
   case ND_NE:
-
-    println("  xor $a0, $a0, $a1");
-
-    if (node->kind == ND_EQ)
-      println("  xori $a0, $a0, 1");
-    else if (node->kind == ND_NE)
-      println("  andi $a0, $a0, 1");
+    println("  sub.d $a0, $a0, $a1");
+    println("  slt $a0, $a0, $r0");
     return;
   case ND_LT:
       println("  slt $a0, $a0, $a1");
@@ -330,13 +328,13 @@ static void gen_stmt(Node *node) {
     println(".L.begin.%d:", c);
     if (node->cond) {
       gen_expr(node->cond);
-      println("  beqz $a0, .L.end.%d", c);
+      println("  beqz $a0,%s", node->brk_label);
     }
     gen_stmt(node->then);
     if (node->inc)
       gen_expr(node->inc);
     println("  b .L.begin.%d", c);
-    println(".L.end.%d:", c);
+    println("%s:", node->brk_label);
     return;
   }
   case ND_BLOCK:
