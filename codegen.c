@@ -164,6 +164,8 @@ static void gen_expr(Node *node) {
   println("  .loc 1 %d", node->tok->line_no);
 
   switch (node->kind) {
+  case ND_NULL_EXPR:
+    return;
   case ND_NUM:
     println("  li.d $a0, %ld", node->val);
     return;
