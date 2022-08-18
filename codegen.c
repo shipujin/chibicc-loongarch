@@ -365,6 +365,16 @@ static void gen_stmt(Node *node) {
     println("%s:", node->brk_label);
     return;
   }
+  case ND_DO: {
+    int c = count();
+    println(".L.begin.%d:", c);
+    gen_stmt(node->then);
+    println("%s:", node->cont_label);
+    gen_expr(node->cond);
+    println("  bne $a0, $r0, .L.begin.%d", c);
+    println("%s:", node->brk_label);
+    return;
+  }
   case ND_SWITCH:
     gen_expr(node->cond);
 
