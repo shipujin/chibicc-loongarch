@@ -46,7 +46,8 @@ static void gen_addr(Node *node) {
   case ND_VAR:
     if (node->var->is_local) {
       // Local variable
-      println("  addi.d $a0, $fp, %d", node->var->offset - node->var->ty->size);
+      println("  li.d $t1, %d", node->var->offset - node->var->ty->size);
+      println("  add.d $a0, $fp, $t1");
     } else {
       // Global variable
       println("  la.local $a0, %s", node->var->name);
@@ -217,7 +218,9 @@ static void gen_expr(Node *node) {
     int offset = node->var->offset;
     for (int i = 0; i < node->var->ty->size; i++) {
       offset -= sizeof(char);
-      println("  st.b $r0, $fp, %d", offset);
+      println("  li.d $t1, %d", offset);
+      println("  add.d $t1, $t1, $fp");
+      println("  st.b $r0, $t1, 0");
     }
     return;
   }
@@ -532,18 +535,20 @@ static void emit_data(Obj *prog) {
 }
 
 static void store_gp(int r, int offset, int sz) {
+  println("  li.d $t1, %d", offset - sz);
+  println("  add.d $t1, $t1, $fp");
   switch (sz) {
   case 1:
-    println("  st.b $%s, $fp, %d", argreg[r], offset - sz);
+    println("  st.b $%s, $t1, 0", argreg[r]);
     return;
   case 2:
-    println("  st.h $%s, $fp, %d", argreg[r], offset - sz);
+    println("  st.h $%s, $t1, 0", argreg[r]);
     return;
   case 4:
-    println("  st.w $%s, $fp, %d", argreg[r], offset - sz);
+    println("  st.w $%s, $t1, 0", argreg[r]);
     return;
   case 8:
-    println("  st.d $%s, $fp, %d", argreg[r], offset - sz);
+    println("  st.d $%s, $t1, 0", argreg[r]);
     return;
   }
   unreachable();
@@ -564,12 +569,13 @@ static void emit_text(Obj *prog) {
     current_fn = fn;
 
     // Prologue
-    println("  addi.d $sp, $sp,-%d", fn->stack_size + 16);
-    println("  st.d $ra, $sp, %d", fn->stack_size + 8);
-    println("  st.d $fp, $sp, %d", fn->stack_size);
-    println("  add.d $fp, $r0, $sp");
+    println("  st.d $ra, $sp, -8");
+    println("  st.d $fp, $sp, -16");
+    println("  addi.d $fp, $sp, -16");
+    println("  li.d $t1, -%d", fn->stack_size + 16);
+    println("  add.d $sp, $sp, $t1");
 
-    println("  addi.d $sp, $sp, -%d", fn->stack_size);
+//    println("  addi.d $sp, $sp, -%d", fn->stack_size);
 
     // Save passed-by-register arguments to the stack
     int i = 0;
@@ -592,10 +598,10 @@ static void emit_text(Obj *prog) {
 
     // Epilogue
     println(".L.return.%s:", fn->name);
-    println("  add.d $sp, $r0, $fp");
-    println("  ld.d $ra, $sp, %d", fn->stack_size + 8);
-    println("  ld.d $fp, $sp, %d", fn->stack_size);
-    println("  addi.d $sp, $sp, %d", fn->stack_size + 16);
+    println("  li.d $t1, %d", fn->stack_size + 16);
+    println("  add.d $sp, $sp, $t1");
+    println("  ld.d $ra, $sp, -8");
+    println("  ld.d $fp, $sp, -16");
     println("  jr $ra");
   }
 }
