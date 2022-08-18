@@ -268,7 +268,13 @@ static void gen_expr(Node *node) {
     for (int i = nargs - 1; i >= 0; i--)
       pop(argreg[i]);
 
-    println("  bl %s", node->funcname);
+    if (depth % 2 == 0) {
+      println("  bl %s", node->funcname);
+    } else {
+      println("  addi.d $fp, $fp,-8");
+      println("  bl %s", node->funcname);
+      println("  addi.d $fp, $fp, 8");
+    }
     return;
   }
   }
