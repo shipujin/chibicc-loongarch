@@ -177,9 +177,25 @@ static void gen_expr(Node *node) {
   switch (node->kind) {
   case ND_NULL_EXPR:
     return;
-  case ND_NUM:
+  case ND_NUM: {
+    union { float f32; double f64; uint32_t u32; uint64_t u64; } u;
+
+    switch (node->ty->kind) {
+    case TY_FLOAT:
+      u.f32 = node->fval;
+      println("  li.w $a0, %u  # float %f", u.u32, node->fval);
+      println("  movgr2fr.w $f0, $a0");
+      return;
+    case TY_DOUBLE:
+      u.f64 = node->fval;
+      println("  li.d $a0, %lu  # float %f", u.u64, node->fval);
+	  println("  movgr2fr.d $f0, $a0");
+      return;
+    }
+
     println("  li.d $a0, %ld", node->val);
     return;
+  }
   case ND_NEG:
     gen_expr(node->lhs);
     println("  sub.d $a0, $r0, $a0");
